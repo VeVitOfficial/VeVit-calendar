@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteBase /
+RewriteRule ^api\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+
+# CORS pro VeVit ekosystém
+Header set Access-Control-Allow-Origin "https://calendar.vevit.fun"
+Header set Access-Control-Allow-Credentials "true"

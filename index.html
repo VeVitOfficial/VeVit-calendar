@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeVit Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://account.vevit.fun/js/vevit-auth.js"></script>
+<script src="https://account.vevit.fun/js/vevit-login-popup.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sora: ['Sora', 'sans-serif'] },
+      colors: {
+        vbg: '#09090b',
+        vsurface: '#18181b',
+        velevated: '#27272a',
+        vaccent: '#10b981',
+        vaccenthover: '#059669',
+      }
+    }
+  }
+}
+</script>
+<style>
+:root {
+  /* Emerald Zenith design tokens */
+  --bg-base:        #09090b;
+  --bg-surface:     #18181b;
+  --bg-elevated:    #27272a;
+  --bg-glass:       rgba(24, 24, 27, 0.6);
+  --bg-glass-light: rgba(255, 255, 255, 0.03);
+  --border-default: rgba(255, 255, 255, 0.06);
+  --border-hover:   rgba(255, 255, 255, 0.12);
+  --border-emerald: rgba(16, 185, 129, 0.3);
+  --emerald-300:    #6ee7b7;
+  --emerald-400:    #34d399;
+  --emerald-500:    #10b981;
+  --emerald-600:    #059669;
+  --emerald-700:    #047857;
+  --emerald-glow:   rgba(16, 185, 129, 0.15);
+  --emerald-glow-strong: rgba(16, 185, 129, 0.35);
+  --text-primary:   #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted:     #71717a;
+  --text-faint:     #52525b;
+  --warn:           #f59e0b;
+  --error:          #ef4444;
+  --info:           #3b82f6;
+  --shadow-glass:   0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-emerald: 0 0 24px rgba(16, 185, 129, 0.2);
+  --glow-emerald-strong: 0 0 32px rgba(16, 185, 129, 0.4);
+
+  /* Legacy aliases for existing code */
+  --bg: var(--bg-base);
+  --surface: var(--bg-surface);
+  --elevated: var(--bg-elevated);
+  --border: var(--border-default);
+  --accent: var(--emerald-500);
+  --accent-hover: var(--emerald-600);
+  --accent-glow: var(--emerald-glow);
+  --text: var(--text-primary);
+  --text2: var(--text-secondary);
+  --text3: var(--text-muted);
+  --shadow: var(--shadow-glass);
+}
+@keyframes emerald-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--emerald-glow-strong); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes float-bubble {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+input, select, textarea { font-family: 'Sora', sans-serif; }
+input::placeholder, textarea::placeholder { color: var(--text3); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent) !important; box-shadow: 0 0 0 2px var(--accent-glow); }
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.month-cell { min-height: 120px; border: 1px solid var(--border); padding: 4px 6px; cursor: pointer; transition: background 0.15s; }
+.month-cell:hover { background: rgba(255,255,255,0.02); }
+.month-cell.other-month { opacity: 0.3; }
+.month-cell.today .day-num { background: var(--accent); color: #0d0d0d; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+.event-pill { height: 22px; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; color: #0d0d0d; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event-pill:hover { transform: scale(1.02); box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.week-grid { display: grid; grid-template-columns: 56px repeat(7, 1fr); }
+.week-time { height: 60px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: center; padding-top: 2px; font-size: 11px; color: var(--text3); }
+.week-cell { height: 60px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); position: relative; }
+.week-event { position: absolute; left: 2px; right: 2px; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 600; color: #0d0d0d; cursor: pointer; overflow: hidden; z-index: 2; transition: transform 0.1s; }
+.week-event:hover { transform: scale(1.02); z-index: 5; }
+.now-line { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; z-index: 10; }
+.now-dot { position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; }
+.day-grid { display: grid; grid-template-columns: 56px 1fr; }
+.sidebar-ctx { display: none; }
+.sidebar-item:hover .sidebar-ctx { display: flex; }
+.modal-overlay { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+.slide-in { animation: slideIn 250ms ease forwards; }
+@keyframes slideIn { from { transform: translateX(360px); } to { transform: translateX(0); } }
+.slide-out { animation: slideOut 200ms ease forwards; }
+@keyframes slideOut { from { transform: translateX(0); } to { transform: translateX(360px); } }
+.fade-in { animation: fadeIn 150ms ease; }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+.toast-enter { animation: toastIn 300ms ease; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.skeleton { background: linear-gradient(90deg, var(--elevated) 25%, rgba(255,255,255,0.04) 50%, var(--elevated) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.search-result:hover { background: var(--elevated); }
+.segment-btn.active { background: var(--elevated); color: white; border-color: var(--border-hover); }
+.segment-btn:not(.active) { color: #9ca3af; }
+.segment-btn:not(.active):hover { color: white; }
+.reminder-done .rem-text { text-decoration: line-through; color: var(--text3); }
+.reminder-done { opacity: 0.5; }
+.popover { z-index: 50; }
+</style>
+</head>
+<body class="font-sora">
+
+<!-- TOPBAR -->
+<header id="topbar" class="fixed top-0 left-0 right-0 h-14 bg-[#161616] border-b border-white/[0.06] flex items-center px-4 z-30">
+  <div class="flex items-center gap-3 min-w-[200px]">
+    <button id="sidebarToggle" class="p-1.5 rounded-lg hover:bg-white/[0.06] text-gray-400 hover:text-white transition-colors lg:hidden"><i data-lucide="menu" class="w-5 h-5"></i></button>
+    <div class="flex items-center gap-2">
+      <i data-lucide="calendar-days" class="w-5 h-5 text-emerald-500"></i>
+      <span class="text-sm font-semibold text-white hidden sm:inline">VeVit Calendar</span>
+    </div>
+  </div>
+  <div class="flex-1 flex justify-center px-4">
+    <div class="relative w-full max-w-[480px]">
+      <i data-lucide="search" class="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+      <input id="searchInput" type="text" placeholder="Hledat události a připomínky…" class="w-full h-9 pl-9 pr-16 rounded-[10px] bg-[#1e1e1e] border border-white/[0.06] text-sm text-white placeholder:text-gray-500 focus:border-emerald-500 focus:shadow-[0_0_0_2px_rgba(16,185,129,0.12)]" autocomplete="off">
+      <kbd class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 bg-[#161616] border border-white/[0.06] rounded px-1.5 py-0.5 pointer-events-none">Ctrl+K</kbd>
+      <div id="searchDropdown" class="hidden absolute top-12 left-0 right-0 bg-[#1e1e1e] border border-white/[0.06] rounded-[10px] shadow-[4px_4px_12px_rgba(0,0,0,0.5)] max-h-[320px] overflow-y-auto z-50"></div>
+    </div>
+  </div>
+  <div class="flex items-center gap-3 min-w-[200px] justify-end">
+    <button id="newEventBtn" class="h-9 px-4 rounded-[10px] bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-[#0d0d0d] transition-colors flex items-center gap-1.5">
+      <i data-lucide="plus" class="w-4 h-4"></i> Nová událost
+    </button>
+    <div style="position:relative">
+      <button id="appsGridBtn" class="p-2 rounded-lg hover:bg-white/[0.06] text-gray-400 hover:text-white transition-colors relative">
+        <i data-lucide="grid-3x3" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div id="vevit-auth-nav"></div>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="flex h-screen pt-14">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="w-[240px] min-w-[240px] bg-[#0d0d0d] border-r border-white/[0.06] flex flex-col overflow-y-auto hidden lg:flex">
+    <div class="p-3">
+      <!-- Mini month -->
+      <div class="flex items-center justify-between mb-2">
+        <button id="miniPrev" class="p-1 rounded hover:bg-white/[0.06] text-gray-400 hover:text-white"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+        <span id="miniMonthLabel" class="text-xs font-semibold text-white"></span>
+        <button id="miniNext" class="p-1 rounded hover:bg-white/[0.06] text-gray-400 hover:text-white"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+      </div>
+      <div id="miniMonth" class="grid grid-cols-7 gap-0 text-center"></div>
+    </div>
+    <div class="border-t border-white/[0.06] mx-3"></div>
+
+    <!-- Moje Kalendáře -->
+    <div class="p-3">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Moje Kalendáře</span>
+        <button id="addCalendarBtn" class="p-0.5 rounded hover:bg-white/[0.06] text-gray-400 hover:text-white"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+      </div>
+      <div id="calendarList" class="space-y-1"></div>
+    </div>
+    <div class="border-t border-white/[0.06] mx-3"></div>
+
+    <!-- Složky připomínek -->
+    <div class="p-3">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Připomínky</span>
+        <button id="addFolderBtn" class="p-0.5 rounded hover:bg-white/[0.06] text-gray-400 hover:text-white"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+      </div>
+      <div id="folderList" class="space-y-1"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+    <!-- Nav bar -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-[#0d0d0d] shrink-0">
+      <div class="flex items-center gap-2">
+        <button id="todayBtn" class="h-8 px-3 rounded-lg text-sm font-semibold text-gray-300 hover:text-white hover:bg-white/[0.06] transition-colors">Dnes</button>
+        <button id="prevBtn" class="p-1.5 rounded-lg hover:bg-white/[0.06] text-gray-400 hover:text-white"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+        <button id="nextBtn" class="p-1.5 rounded-lg hover:bg-white/[0.06] text-gray-400 hover:text-white"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+        <h1 id="viewTitle" class="text-lg font-semibold text-white ml-1"></h1>
+      </div>
+      <div class="flex items-center gap-0.5 bg-[#161616] rounded-lg p-0.5 border border-white/[0.06]">
+        <button data-view="day" class="segment-btn px-3 py-1 rounded-md text-sm font-semibold border border-transparent transition-colors">Den</button>
+        <button data-view="week" class="segment-btn px-3 py-1 rounded-md text-sm font-semibold border border-transparent transition-colors">Týden</button>
+        <button data-view="month" class="segment-btn active px-3 py-1 rounded-md text-sm font-semibold border border-transparent transition-colors">Měsíc</button>
+        <button data-view="agenda" class="segment-btn px-3 py-1 rounded-md text-sm font-semibold border border-transparent transition-colors">Agenda</button>
+      </div>
+    </div>
+    <!-- Calendar content -->
+    <div id="calendarContent" class="flex-1 overflow-y-auto p-4"></div>
+  </main>
+</div>
+
+<!-- Reminders panel -->
+<div id="remindersPanel" class="fixed top-14 right-0 bottom-0 w-[360px] bg-[#161616] border-l border-white/[0.06] z-40 hidden overflow-y-auto flex flex-col">
+  <div class="flex items-center justify-between p-4 border-b border-white/[0.06]">
+    <h2 id="remindersTitle" class="text-lg font-semibold text-white"></h2>
+    <div class="flex items-center gap-2">
+      <button id="addReminderBtn" class="h-8 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-[#0d0d0d] flex items-center gap-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Přidat</button>
+      <button id="closeReminders" class="p-1.5 rounded-lg hover:bg-white/[0.06] text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+  </div>
+  <div class="flex gap-1 p-3 border-b border-white/[0.06]">
+    <button data-rem-filter="all" class="rem-filter-btn px-3 py-1 rounded-md text-xs font-semibold border-b-2 border-emerald-500 text-white">Vše</button>
+    <button data-rem-filter="active" class="rem-filter-btn px-3 py-1 rounded-md text-xs font-semibold border-b-2 border-transparent text-gray-400 hover:text-white">Aktivní</button>
+    <button data-rem-filter="done" class="rem-filter-btn px-3 py-1 rounded-md text-xs font-semibold border-b-2 border-transparent text-gray-400 hover:text-white">Hotové</button>
+  </div>
+  <div id="remindersList" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+</div>
+
+<!-- Event Modal -->
+<div id="eventModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+  <div class="bg-[rgba(24,24,27,0.6)] backdrop-blur-[12px] rounded-2xl border border-white/[0.06] shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-full max-w-[560px] mx-4 fade-in flex flex-col max-h-[90vh]">
+    <div class="p-5 border-b border-white/[0.06]">
+      <input id="eventTitle" type="text" placeholder="Název události" class="w-full text-lg font-semibold bg-transparent text-white placeholder:text-gray-500 border-none">
+    </div>
+    <div class="p-5 space-y-4 overflow-y-auto flex-1">
+      <div class="flex items-center gap-3">
+        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+          <input id="eventAllDay" type="checkbox" class="accent-emerald-500 w-4 h-4 rounded"> Celý den
+        </label>
+      </div>
+      <div id="eventDateTime" class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Od</label>
+          <input id="eventStartDate" type="date" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+          <input id="eventStartTime" type="time" value="09:00" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white mt-1.5 event-time-input">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Do</label>
+          <input id="eventEndDate" type="date" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+          <input id="eventEndTime" type="time" value="10:00" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white mt-1.5 event-time-input">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-gray-500 mb-1 block">Kalendář</label>
+        <select id="eventCalendar" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white"></select>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> Místo</label>
+        <input id="eventLocation" type="text" placeholder="Přidat místo" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-gray-500 mb-1 block">Popis</label>
+        <textarea id="eventDescription" rows="3" placeholder="Přidat popis" class="w-full px-3 py-2 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white resize-none"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Opakování</label>
+          <select id="eventRecurrence" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+            <option value="none">Neopakuje se</option>
+            <option value="daily">Denně</option>
+            <option value="weekly">Týdně</option>
+            <option value="monthly">Měsíčně</option>
+            <option value="yearly">Ročně</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Připomínka</label>
+          <select id="eventReminder" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+            <option value="">Žádná</option>
+            <option value="15min">15 min před</option>
+            <option value="30min">30 min před</option>
+            <option value="1hour">1 hod před</option>
+            <option value="1day">1 den před</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center justify-end gap-2 p-4 border-t border-white/[0.06]">
+      <button id="eventCancel" class="h-9 px-4 rounded-lg text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors">Zrušit</button>
+      <button id="eventSave" class="h-9 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-[#0d0d0d] transition-colors">Uložit událost</button>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar Modal -->
+<div id="calendarModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+  <div class="bg-[rgba(24,24,27,0.6)] backdrop-blur-[12px] rounded-2xl border border-white/[0.06] shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-full max-w-[400px] mx-4 fade-in">
+    <div class="p-5">
+      <h2 id="calendarModalTitle" class="text-base font-semibold text-white mb-4">Nový kalendář</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Název</label>
+          <input id="calName" type="text" placeholder="Název kalendáře" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Barva</label>
+          <div id="calColorPicker" class="flex gap-2 flex-wrap"></div>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 mt-5">
+        <button id="calCancel" class="h-9 px-4 rounded-lg text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors">Zrušit</button>
+        <button id="calSave" class="h-9 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-[#0d0d0d] transition-colors">Vytvořit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Folder Modal -->
+<div id="folderModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+  <div class="bg-[rgba(24,24,27,0.6)] backdrop-blur-[12px] rounded-2xl border border-white/[0.06] shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-full max-w-[400px] mx-4 fade-in">
+    <div class="p-5">
+      <h2 class="text-base font-semibold text-white mb-4">Nová složka</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Název</label>
+          <input id="folderName" type="text" placeholder="Název složky" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Ikona</label>
+          <select id="folderIcon" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+            <option value="bell">Zvonek</option>
+            <option value="user">Uživatel</option>
+            <option value="briefcase">Aktovka</option>
+            <option value="shopping-cart">Nákupní košík</option>
+            <option value="heart">Srdce</option>
+            <option value="star">Hvězda</option>
+            <option value="home">Dům</option>
+            <option value="book">Kniha</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Barva</label>
+          <div id="folderColorPicker" class="flex gap-2 flex-wrap"></div>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 mt-5">
+        <button id="folderCancel" class="h-9 px-4 rounded-lg text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors">Zrušit</button>
+        <button id="folderSave" class="h-9 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-[#0d0d0d] transition-colors">Vytvořit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reminder Modal -->
+<div id="reminderModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+  <div class="bg-[rgba(24,24,27,0.6)] backdrop-blur-[12px] rounded-2xl border border-white/[0.06] shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-full max-w-[400px] mx-4 fade-in">
+    <div class="p-5">
+      <h2 class="text-base font-semibold text-white mb-4">Nová připomínka</h2>
+      <div class="space-y-4">
+        <div>
+          <input id="reminderTitle" type="text" placeholder="Název připomínky" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Složka</label>
+          <select id="reminderFolder" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white"></select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Termín</label>
+          <input id="reminderDueDate" type="date" class="w-full h-9 px-3 rounded-lg bg-[#161616] border border-white/[0.06] text-sm text-white">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-500 mb-1 block">Priorita</label>
+          <div class="flex gap-2">
+            <button data-priority="low" class="priority-btn flex-1 h-9 rounded-lg border border-white/[0.06] text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors">Nízká</button>
+            <button data-priority="medium" class="priority-btn flex-1 h-9 rounded-lg border border-amber-500/50 bg-amber-500/10 text-sm font-semibold text-amber-400 transition-colors">Střední</button>
+            <button data-priority="high" class="priority-btn flex-1 h-9 rounded-lg border border-white/[0.06] text-sm font-semibold text-gray-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/10 transition-colors">Vysoká</button>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 mt-5">
+        <button id="reminderCancel" class="h-9 px-4 rounded-lg text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors">Zrušit</button>
+        <button id="reminderSave" class="h-9 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-[#0d0d0d] transition-colors">Přidat</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Event Popover -->
+<div id="eventPopover" class="hidden popover fixed bg-[#1e1e1e] rounded-[10px] border border-white/[0.06] shadow-[4px_4px_12px_rgba(0,0,0,0.5)] max-w-[300px] z-40 fade-in"></div>
+
+<!-- Welcome / Login overlay -->
+<div id="welcomeOverlay" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-[#0d0d0d]/95 backdrop-blur-sm">
+  <div class="text-center max-w-md mx-4">
+    <div class="w-20 h-20 rounded-2xl bg-[#1e1e1e] border border-white/[0.06] flex items-center justify-center mx-auto mb-8">
+      <i data-lucide="calendar-days" class="w-10 h-10 text-emerald-500"></i>
+    </div>
+    <h1 class="text-2xl font-bold text-white mb-3">Vítej v VeVit Calendar</h1>
+    <p class="text-gray-400 text-sm leading-relaxed mb-8">Pro používání VeVit Calendar se musíte přihlásit do svého VeVit účtu. Po přihlášení získáte přístup ke všem svým kalendářům a připomínkám.</p>
+    <button id="welcomeLoginBtn" class="h-12 px-8 rounded-[10px] bg-emerald-500 hover:bg-emerald-600 text-base font-semibold text-[#0d0d0d] transition-colors flex items-center gap-2 mx-auto">
+      <i data-lucide="log-in" class="w-5 h-5"></i> Přihlásit se
+    </button>
+    <p class="text-xs text-gray-600 mt-4">Nemáte účet? <a href="https://account.vevit.fun/register" class="text-emerald-500 hover:text-emerald-400 transition-colors">Zaregistrujte se</a></p>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toasts" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+<script>
+// === AUTH ===
+const DEV_MODE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '';
+let currentUser = null;
+
+function tryGetUser() {
+  // Primary: VeVit SSO library
+  if (typeof VeVit !== 'undefined' && VeVit.getUser) {
+    const u = VeVit.getUser();
+    if (u && u.id) return u;
+  }
+  // Fallback: manual cookie parsing
+  try {
+    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('vevit_auth='));
+    if (cookie) {
+      const data = JSON.parse(decodeURIComponent(cookie.split('=')[1]));
+      if (data && data.id) return data;
+    }
+  } catch {}
+  return null;
+}
+
+function showWelcome() {
+  const overlay = document.getElementById('welcomeOverlay');
+  overlay.classList.remove('hidden');
+  lucide.createIcons();
+  const btn = document.getElementById('welcomeLoginBtn');
+  // Clone to remove old listeners
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', () => {
+    if (typeof VeVitLogin !== 'undefined' && VeVitLogin.open) {
+      VeVitLogin.open();
+    } else {
+      window.location.href = 'https://account.vevit.fun/login?redirect=' + encodeURIComponent(window.location.href);
+    }
+  });
+}
+
+function hideWelcome() {
+  document.getElementById('welcomeOverlay').classList.add('hidden');
+}
+
+function initAuth() {
+  currentUser = tryGetUser();
+
+  if (!currentUser || !currentUser.id) {
+    if (DEV_MODE) {
+      currentUser = { id: 'dev-user-001', nickname: 'DevUser', level: 1, xp: 0, role: 'admin', email: 'dev@localhost', avatar_url: '' };
+    } else {
+      showWelcome();
+      // Poll for login every 1.5s — once user logs in via popup, cookie appears
+      const poll = setInterval(() => {
+        const u = tryGetUser();
+        if (u && u.id) {
+          clearInterval(poll);
+          currentUser = u;
+          hideWelcome();
+          renderAuthNav();
+          startApp();
+        }
+      }, 1500);
+      return;
+    }
+  }
+
+  renderAuthNav();
+}
+
+function renderAuthNav() {
+  const nav = document.getElementById('vevit-auth-nav');
+  if (!nav || !currentUser) return;
+
+  const avatarUrl = currentUser.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(currentUser.nickname || 'U') + '&background=1e1e1e&color=10b981&size=64&bold=true';
+
+  nav.innerHTML = `
+    <div style="position:relative">
+      <div id="vevit-user-btn" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <img src="${avatarUrl}" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #10b981" onerror="this.src='https://ui-avatars.com/api/?name=U&background=1e1e1e&color=10b981&size=64'">
+        <span style="font-family:Sora;font-size:14px;font-weight:600;color:#f0f0f0">${currentUser.nickname || currentUser.email || 'User'}</span>
+        <span style="font-family:Sora;font-size:12px;color:#10b981;font-weight:600">Lv.${currentUser.level || 1}</span>
+      </div>
+    </div>`;
+
+  document.getElementById('vevit-user-btn').addEventListener('click', () => {
+    const existing = document.getElementById('vevit-dropdown');
+    if (existing) { existing.remove(); return; }
+    const dropdown = document.createElement('div');
+    dropdown.id = 'vevit-dropdown';
+    dropdown.style.cssText = 'position:absolute;top:44px;right:0;background:#161616;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:8px;min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:1000;font-family:Sora;';
+    dropdown.innerHTML = `
+      <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:4px">
+        <div style="font-size:14px;font-weight:600;color:#f0f0f0">${currentUser.nickname || 'User'}</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px">${currentUser.email || ''}</div>
+      </div>
+      <a href="https://account.vevit.fun/profile" style="display:flex;align-items:center;gap:8px;padding:10px 14px;color:#f0f0f0;font-size:14px;text-decoration:none;border-radius:8px" onmouseover="this.style.background='#1e1e1e'" onmouseout="this.style.background='transparent'">
+        <i data-lucide="user" style="width:16px;height:16px;color:#9ca3af"></i> Můj profil
+      </a>
+      <button id="vevit-logout-btn" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:10px 14px;color:#ef4444;font-size:14px;background:none;border:none;cursor:pointer;border-radius:8px;font-family:Sora" onmouseover="this.style.background='#1e1e1e'" onmouseout="this.style.background='transparent'">
+        <i data-lucide="log-out" style="width:16px;height:16px"></i> Odhlásit se
+      </button>`;
+    nav.querySelector(':scope > div').appendChild(dropdown);
+    lucide.createIcons();
+    dropdown.querySelector('#vevit-logout-btn').addEventListener('click', () => {
+      if (typeof VeVit !== 'undefined' && VeVit.logout) VeVit.logout();
+      else window.location.href = 'https://account.vevit.fun/logout';
+    });
+    setTimeout(() => {
+      document.addEventListener('click', function handler(e) {
+        if (!dropdown.contains(e.target) && !document.getElementById('vevit-user-btn').contains(e.target)) {
+          dropdown.remove();
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 10);
+  });
+}
+
+function initAppsGrid() {
+  const btn = document.getElementById('appsGridBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const existing = document.getElementById('apps-dropdown');
+    if (existing) { existing.remove(); return; }
+    const dropdown = document.createElement('div');
+    dropdown.id = 'apps-dropdown';
+    dropdown.style.cssText = 'position:absolute;top:44px;right:0;background:#18181b;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:8px;width:220px;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:1000;font-family:Sora;';
+    const apps = [
+      { name: 'Account', url: 'https://account.vevit.fun', icon: 'user-circle', color: '#10b981' },
+      { name: 'Games', url: 'https://games.vevit.fun', icon: 'gamepad-2', color: '#34d399' },
+      { name: 'Tools', url: 'https://tools.vevit.fun', icon: 'wrench', color: '#10b981' },
+      { name: 'Edu', url: 'https://edu.vevit.fun', icon: 'graduation-cap', color: '#6ee7b7' },
+      { name: 'Services', url: 'https://services.vevit.fun', icon: 'briefcase', color: '#059669' },
+    ];
+    apps.forEach(a => {
+      const link = document.createElement('a');
+      link.href = a.url;
+      link.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;text-decoration:none;transition:background 0.15s';
+      link.onmouseover = () => link.style.background = '#27272a';
+      link.onmouseout = () => link.style.background = 'transparent';
+      const icon = document.createElement('i');
+      icon.dataset.lucide = a.icon;
+      icon.style.cssText = 'width:18px;height:18px;color:' + a.color;
+      const span = document.createElement('span');
+      span.textContent = a.name;
+      span.style.cssText = 'font-size:13px;font-weight:600;color:#fafafa';
+      link.appendChild(icon);
+      link.appendChild(span);
+      dropdown.appendChild(link);
+    });
+    btn.parentNode.appendChild(dropdown);
+    lucide.createIcons();
+    setTimeout(() => {
+      document.addEventListener('click', function handler(e) {
+        if (!dropdown.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+          dropdown.remove();
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 10);
+  });
+}
+
+// === STATE ===
+const API = 'api.php';
+const DAYS_SHORT = ['Po','Út','St','Čt','Pá','So','Ne'];
+const DAYS_FULL = ['Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota','Neděle'];
+const MONTHS = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+const MONTHS_GEN = ['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
+const CAL_COLORS = ['#064e3b','#065f46','#047857','#059669','#10b981','#34d399','#6ee7b7','#a7f3d0'];
+const FOLDER_COLORS = ['#9ca3af','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#10b981','#06b6d4'];
+
+let state = {
+  currentDate: new Date(),
+  miniDate: new Date(),
+  activeView: 'month',
+  calendars: [],
+  events: [],
+  folders: [],
+  reminders: [],
+  selectedCalColor: '#10b981',
+  selectedFolderColor: '#9ca3af',
+  editingEventId: null,
+  editingCalendarId: null,
+  activeRemFilter: 'all',
+  activeRemFolderId: null,
+  selectedReminderPriority: 'medium',
+  sidebarOpen: false,
+};
+
+// === LOCAL STORAGE ===
+const LS_CALENDARS = 'vevit_cal_calendars';
+const LS_FOLDERS = 'vevit_cal_folders';
+
+function getLocalCalendars() {
+  try { return JSON.parse(localStorage.getItem(LS_CALENDARS)) || []; } catch { return []; }
+}
+function setLocalCalendars(arr) { localStorage.setItem(LS_CALENDARS, JSON.stringify(arr)); }
+function getLocalFolders() {
+  try { return JSON.parse(localStorage.getItem(LS_FOLDERS)) || []; } catch { return []; }
+}
+function setLocalFolders(arr) { localStorage.setItem(LS_FOLDERS, JSON.stringify(arr)); }
+
+function ensureLocalDefaults() {
+  if (!getLocalCalendars().length) {
+    setLocalCalendars([
+      { id: 1, name: 'Osobní', color: '#10b981', is_visible: 1, is_default: 1 },
+      { id: 2, name: 'Práce', color: '#059669', is_visible: 1, is_default: 0 },
+      { id: 3, name: 'Svátky', color: '#34d399', is_visible: 1, is_default: 0 },
+    ]);
+  }
+  if (!getLocalFolders().length) {
+    setLocalFolders([
+      { id: 1, name: 'Osobní', icon: 'user', color: '#9ca3af', pending_count: 0 },
+      { id: 2, name: 'Práce', icon: 'briefcase', color: '#10b981', pending_count: 0 },
+      { id: 3, name: 'Nákupy', icon: 'shopping-cart', color: '#f59e0b', pending_count: 0 },
+    ]);
+  }
+}
+
+// === API ===
+async function api(action, data = null, method = 'GET') {
+  const opts = { method, credentials: 'include', headers: { 'Content-Type': 'application/json' } };
+  let url = `${API}?action=${action}`;
+  if (method === 'GET' && data) {
+    Object.entries(data).forEach(([k, v]) => { url += `&${k}=${encodeURIComponent(v)}`; });
+  } else if (data) {
+    opts.body = JSON.stringify(data);
+  }
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    currentUser = null;
+    showWelcome();
+    return null;
+  }
+  return res.json();
+}
+
+async function loadCalendars() {
+  const remote = await api('get_calendars');
+  if (Array.isArray(remote) && remote.length) {
+    state.calendars = remote;
+    setLocalCalendars(remote);
+  } else {
+    ensureLocalDefaults();
+    state.calendars = getLocalCalendars();
+  }
+  renderCalendarList();
+  populateCalendarSelect();
+}
+async function loadEvents(start, end) {
+  const remote = await api('get_events', { start, end });
+  state.events = Array.isArray(remote) ? remote : [];
+  renderView();
+}
+async function loadFolders() {
+  const remote = await api('get_folders');
+  if (Array.isArray(remote) && remote.length) {
+    state.folders = remote;
+    setLocalFolders(remote);
+  } else {
+    ensureLocalDefaults();
+    state.folders = getLocalFolders();
+  }
+  renderFolderList();
+}
+async function loadReminders(folderId) {
+  state.reminders = await api('get_reminders', folderId ? { folder_id: folderId } : {});
+  renderRemindersList();
+}
+
+// === RENDER ===
+function getViewRange() {
+  const d = new Date(state.currentDate);
+  let start, end;
+  if (state.activeView === 'month') {
+    start = new Date(d.getFullYear(), d.getMonth(), 1);
+    end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  } else if (state.activeView === 'week') {
+    const day = d.getDay() || 7;
+    start = new Date(d); start.setDate(d.getDate() - day + 1);
+    end = new Date(start); end.setDate(start.getDate() + 6);
+  } else if (state.activeView === 'day') {
+    start = new Date(d); end = new Date(d);
+  } else {
+    start = new Date(d); end = new Date(d); end.setDate(end.getDate() + 30);
+  }
+  const fmt = dt => dt.toISOString().slice(0, 10);
+  return { start: fmt(start), end: fmt(end) };
+}
+
+function renderView() {
+  const c = document.getElementById('calendarContent');
+  updateViewTitle();
+  updateSegmentBtns();
+  if (state.activeView === 'month') renderMonth(c);
+  else if (state.activeView === 'week') renderWeek(c);
+  else if (state.activeView === 'day') renderDay(c);
+  else renderAgenda(c);
+  lucide.createIcons();
+}
+
+function updateViewTitle() {
+  const d = state.currentDate;
+  const el = document.getElementById('viewTitle');
+  if (state.activeView === 'month') {
+    el.textContent = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  } else if (state.activeView === 'week') {
+    const day = d.getDay() || 7;
+    const s = new Date(d); s.setDate(d.getDate() - day + 1);
+    const e = new Date(s); e.setDate(s.getDate() + 6);
+    el.textContent = `${s.getDate()}.–${e.getDate()}. ${MONTHS_GEN[s.getMonth()]} ${s.getFullYear()}`;
+  } else if (state.activeView === 'day') {
+    el.textContent = `${d.getDate()}. ${MONTHS_GEN[d.getMonth()]} ${d.getFullYear()}`;
+  } else {
+    el.textContent = `Agenda`;
+  }
+}
+
+function updateSegmentBtns() {
+  document.querySelectorAll('.segment-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === state.activeView);
+  });
+}
+
+function getEventsForDate(dateStr) {
+  return state.events.filter(e => dateStr >= e.start_date && dateStr <= e.end_date);
+}
+
+function getEventsForDateRange(startStr, endStr) {
+  return state.events.filter(e => e.start_date <= endStr && e.end_date >= startStr);
+}
+
+function fmtDate(d) { return d.toISOString().slice(0, 10); }
+function todayStr() { return fmtDate(new Date()); }
+function fmtTimeCz(t) { if (!t) return ''; return t.slice(0,5); }
+function fmtDateCz(d) { const p = d.split('-'); return `${parseInt(p[2])}.${parseInt(p[1])}.${p[0]}`; }
+
+function renderMonth(container) {
+  const d = new Date(state.currentDate);
+  const y = d.getFullYear(), m = d.getMonth();
+  const first = new Date(y, m, 1);
+  const last = new Date(y, m + 1, 0);
+  const startDay = (first.getDay() || 7) - 1;
+  const totalDays = last.getDate();
+  const today = todayStr();
+
+  let html = '<div class="month-grid">';
+  DAYS_SHORT.forEach(ds => { html += `<div class="text-center text-[11px] font-semibold text-gray-500 py-2 border-b border-white/[0.06]">${ds}</div>`; });
+
+  const cells = [];
+  for (let i = 0; i < startDay; i++) {
+    const prev = new Date(y, m, -startDay + i + 1);
+    cells.push({ date: fmtDate(prev), day: prev.getDate(), other: true });
+  }
+  for (let i = 1; i <= totalDays; i++) {
+    cells.push({ date: fmtDate(new Date(y, m, i)), day: i, other: false });
+  }
+  const rem = 7 - (cells.length % 7);
+  if (rem < 7) {
+    for (let i = 1; i <= rem; i++) {
+      const nxt = new Date(y, m + 1, i);
+      cells.push({ date: fmtDate(nxt), day: nxt.getDate(), other: true });
+    }
+  }
+
+  cells.forEach(cell => {
+    const evts = getEventsForDate(cell.date);
+    const isToday = cell.date === today;
+    html += `<div class="month-cell ${cell.other ? 'other-month' : ''} ${isToday ? 'today' : ''}" data-date="${cell.date}">`;
+    html += `<div class="day-num text-[11px] font-semibold ${isToday ? '' : 'text-white'} ${cell.other ? 'text-gray-700' : ''} flex justify-end mb-1">${cell.day}</div>`;
+    const max = 3;
+    evts.slice(0, max).forEach(ev => {
+      const col = ev.calendar_color || '#10b981';
+      const time = ev.is_all_day ? '' : fmtTimeCz(ev.start_time);
+      html += `<div class="event-pill mb-0.5" style="background:${col}cc" data-event-id="${ev.id}">${time ? time + ' ' : ''}${ev.title}</div>`;
+    });
+    if (evts.length > max) {
+      html += `<div class="text-[10px] text-gray-400 font-semibold cursor-pointer hover:text-white" data-date="${cell.date}">+${evts.length - max} další</div>`;
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+
+  container.querySelectorAll('.month-cell').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.event-pill')) return;
+      const date = el.dataset.date;
+      openEventModal(null, date);
+    });
+  });
+  container.querySelectorAll('.event-pill').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const ev = state.events.find(x => x.id == el.dataset.eventId);
+      if (ev) showEventPopover(ev, el);
+    });
+  });
+}
+
+function renderWeek(container) {
+  const d = new Date(state.currentDate);
+  const day = d.getDay() || 7;
+  const weekStart = new Date(d); weekStart.setDate(d.getDate() - day + 1);
+  const today = todayStr();
+  const now = new Date();
+
+  let html = '<div class="week-grid overflow-x-auto">';
+  html += '<div class="sticky left-0 z-10 bg-[#0d0d0d]"></div>';
+  for (let i = 0; i < 7; i++) {
+    const dd = new Date(weekStart); dd.setDate(weekStart.getDate() + i);
+    const isT = fmtDate(dd) === today;
+    html += `<div class="text-center py-2 border-b border-r border-white/[0.06] text-xs font-semibold ${isT ? 'text-emerald-500' : 'text-gray-500'}">${DAYS_SHORT[i]}<br><span class="${isT ? 'text-white' : 'text-gray-400'}">${dd.getDate()}</span></div>`;
+  }
+
+  for (let h = 0; h < 24; h++) {
+    html += `<div class="week-time text-[11px]">${String(h).padStart(2,'0')}:00</div>`;
+    for (let i = 0; i < 7; i++) {
+      const dd = new Date(weekStart); dd.setDate(weekStart.getDate() + i);
+      const dateStr = fmtDate(dd);
+      html += `<div class="week-cell" data-date="${dateStr}" data-hour="${h}"></div>`;
+    }
+  }
+  html += '</div>';
+  container.innerHTML = html;
+
+  const allDayEvts = [];
+  const timedEvts = {};
+  for (let i = 0; i < 7; i++) {
+    const dd = new Date(weekStart); dd.setDate(weekStart.getDate() + i);
+    const dateStr = fmtDate(dd);
+    timedEvts[dateStr] = [];
+    getEventsForDate(dateStr).forEach(ev => {
+      if (ev.is_all_day) allDayEvts.push(ev);
+      else timedEvts[dateStr].push(ev);
+    });
+  }
+
+  const colIndex = {};
+  for (let i = 0; i < 7; i++) {
+    const dd = new Date(weekStart); dd.setDate(weekStart.getDate() + i);
+    const dateStr = fmtDate(dd);
+    const evts = timedEvts[dateStr];
+    const occupied = {};
+    evts.forEach(ev => {
+      const sh = ev.start_time ? parseInt(ev.start_time.slice(0,2)) : 0;
+      const sm = ev.start_time ? parseInt(ev.start_time.slice(3,5)) : 0;
+      const eh = ev.end_time ? parseInt(ev.end_time.slice(0,2)) : 23;
+      const em = ev.end_time ? parseInt(ev.end_time.slice(3,5)) : 0;
+      let col = 0;
+      while (occupied[col]) col++;
+      for (let t = sh; t <= eh; t++) occupied[col] = true;
+      const topPx = sh * 60 + sm;
+      const endPx = eh * 60 + em;
+      const heightPx = Math.max(24, endPx - topPx);
+      const cell = container.querySelector(`.week-cell[data-date="${dateStr}"][data-hour="${sh}"]`);
+      if (cell) {
+        const el = document.createElement('div');
+        el.className = 'week-event';
+        el.dataset.eventId = ev.id;
+        el.style.cssText = `top:${sm}px;height:${heightPx}px;background:${(ev.calendar_color||'#10b981')}cc;left:${col*33}%;width:33%;`;
+        el.innerHTML = `<div class="text-[10px]">${fmtTimeCz(ev.start_time)}</div><div class="font-semibold truncate">${ev.title}</div>`;
+        el.addEventListener('click', () => showEventPopover(ev, el));
+        cell.appendChild(el);
+      }
+    });
+  }
+
+  if (fmtDate(weekStart) <= today && today <= fmtDate(new Date(weekStart.getTime()+6*86400000))) {
+    const todayCol = (now.getDay() || 7) - 1;
+    const cell = container.querySelector(`.week-cell[data-date="${today}"][data-hour="${now.getHours()}"]`);
+    if (cell) {
+      const line = document.createElement('div');
+      line.className = 'now-line';
+      line.style.top = `${now.getMinutes()}px`;
+      line.innerHTML = '<div class="now-dot"></div>';
+      cell.appendChild(line);
+    }
+  }
+}
+
+function renderDay(container) {
+  const d = new Date(state.currentDate);
+  const dateStr = fmtDate(d);
+  const today = todayStr();
+  const now = new Date();
+  const isToday = dateStr === today;
+
+  let html = `<div class="mb-3 text-lg font-semibold text-white">${DAYS_FULL[(d.getDay()||7)-1]} ${d.getDate()}. ${MONTHS_GEN[d.getMonth()]} ${d.getFullYear()}</div>`;
+  html += '<div class="day-grid">';
+  for (let h = 0; h < 24; h++) {
+    html += `<div class="week-time text-[11px] border-r border-b border-white/[0.06]">${String(h).padStart(2,'0')}:00</div>`;
+    html += `<div class="week-cell" data-date="${dateStr}" data-hour="${h}"></div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+
+  const evts = getEventsForDate(dateStr).filter(e => !e.is_all_day);
+  const occupied = {};
+  evts.forEach(ev => {
+    const sh = ev.start_time ? parseInt(ev.start_time.slice(0,2)) : 0;
+    const sm = ev.start_time ? parseInt(ev.start_time.slice(3,5)) : 0;
+    const eh = ev.end_time ? parseInt(ev.end_time.slice(0,2)) : 23;
+    const em = ev.end_time ? parseInt(ev.end_time.slice(3,5)) : 0;
+    let col = 0; while(occupied[col]) col++;
+    for (let t = sh; t <= eh; t++) occupied[col] = true;
+    const topPx = sm;
+    const heightPx = Math.max(24, (eh*60+em) - (sh*60+sm));
+    const cell = container.querySelector(`.week-cell[data-date="${dateStr}"][data-hour="${sh}"]`);
+    if (cell) {
+      const el = document.createElement('div');
+      el.className = 'week-event';
+      el.dataset.eventId = ev.id;
+      el.style.cssText = `top:${topPx}px;height:${heightPx}px;background:${(ev.calendar_color||'#10b981')}cc;left:${col*50}%;width:50%;`;
+      el.innerHTML = `<div class="text-[10px]">${fmtTimeCz(ev.start_time)}</div><div class="font-semibold truncate">${ev.title}</div>`;
+      el.addEventListener('click', () => showEventPopover(ev, el));
+      cell.appendChild(el);
+    }
+  });
+
+  if (isToday) {
+    const cell = container.querySelector(`.week-cell[data-date="${dateStr}"][data-hour="${now.getHours()}"]`);
+    if (cell) {
+      const line = document.createElement('div');
+      line.className = 'now-line';
+      line.style.top = `${now.getMinutes()}px`;
+      line.innerHTML = '<div class="now-dot"></div>';
+      cell.appendChild(line);
+    }
+  }
+}
+
+function renderAgenda(container) {
+  const d = new Date(state.currentDate);
+  const range = 30;
+  let html = '';
+  let lastDate = '';
+  const now = new Date();
+
+  for (let i = 0; i < range; i++) {
+    const dd = new Date(d); dd.setDate(d.getDate() + i);
+    const dateStr = fmtDate(dd);
+    const evts = getEventsForDate(dateStr);
+    if (evts.length === 0) continue;
+    if (dateStr !== lastDate) {
+      const dayName = DAYS_FULL[(dd.getDay()||7)-1];
+      html += `<div class="text-sm font-semibold text-gray-400 mt-4 mb-2 first:mt-0">${dayName} ${dd.getDate()}. ${MONTHS_GEN[dd.getMonth()]}</div>`;
+      lastDate = dateStr;
+    }
+    evts.forEach(ev => {
+      const col = ev.calendar_color || '#10b981';
+      const time = ev.is_all_day ? 'Celý den' : `${fmtTimeCz(ev.start_time)} – ${fmtTimeCz(ev.end_time)}`;
+      html += `<div class="flex items-stretch bg-[#161616] rounded-[10px] mb-2 hover:bg-[#1e1e1e] hover:border-white/[0.12] border border-transparent transition-colors cursor-pointer p-3 gap-3" data-event-id="${ev.id}">
+        <div class="w-1 rounded-full shrink-0" style="background:${col}"></div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-white truncate">${ev.title}</div>
+          <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+            <span>${time}</span>
+            ${ev.location ? `<span class="flex items-center gap-0.5"><i data-lucide="map-pin" class="w-3 h-3"></i>${ev.location}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+
+  if (!html) {
+    html = `<div class="flex flex-col items-center justify-center h-64 text-gray-500">
+      <div class="w-16 h-16 rounded-full bg-[#1e1e1e] flex items-center justify-center mb-4"><i data-lucide="calendar-x" class="w-8 h-8 text-gray-500"></i></div>
+      <div class="text-sm">Žádné nadcházející události</div>
+    </div>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('[data-event-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      const ev = state.events.find(x => x.id == el.dataset.eventId);
+      if (ev) showEventPopover(ev, el);
+    });
+  });
+  lucide.createIcons();
+}
+
+// === MINI MONTH ===
+function renderMiniMonth() {
+  const d = state.miniDate;
+  const y = d.getFullYear(), m = d.getMonth();
+  document.getElementById('miniMonthLabel').textContent = `${MONTHS[m]} ${y}`;
+  const first = new Date(y, m, 1);
+  const last = new Date(y, m + 1, 0);
+  const startDay = (first.getDay() || 7) - 1;
+  const today = todayStr();
+  const selected = fmtDate(state.currentDate);
+
+  let html = '';
+  DAYS_SHORT.forEach(ds => { html += `<div class="text-[10px] font-semibold text-gray-500 py-1">${ds}</div>`; });
+
+  for (let i = 0; i < startDay; i++) {
+    html += '<div class="text-[10px] text-gray-700 text-center py-1"></div>';
+  }
+  for (let i = 1; i <= last.getDate(); i++) {
+    const dateStr = fmtDate(new Date(y, m, i));
+    const isToday = dateStr === today;
+    const isSelected = dateStr === selected;
+    const hasEvents = state.events.some(e => dateStr >= e.start_date && dateStr <= e.end_date);
+    const todayCls = isToday ? 'inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-[#0d0d0d] font-bold shadow-[0_0_8px_rgba(16,185,129,0.5)]' : '';
+    const selCls = isSelected && !isToday ? 'inline-flex items-center justify-center w-5 h-5 rounded-full border border-emerald-500 text-emerald-400 font-semibold' : '';
+    html += `<div class="text-[10px] text-center py-1 cursor-pointer rounded-full hover:bg-white/[0.08] transition-colors relative text-white" data-date="${dateStr}">
+      <span class="${todayCls}${selCls}">${isToday || isSelected ? '' : ''}${i}</span>
+      ${hasEvents ? '<div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-500"></div>' : ''}
+    </div>`;
+  }
+  document.getElementById('miniMonth').innerHTML = html;
+  document.querySelectorAll('#miniMonth [data-date]').forEach(el => {
+    el.addEventListener('click', () => {
+      state.currentDate = new Date(el.dataset.date + 'T12:00:00');
+      state.activeView = 'day';
+      refresh();
+    });
+  });
+}
+
+// === SIDEBAR ===
+function renderCalendarList() {
+  const el = document.getElementById('calendarList');
+  let html = '';
+  state.calendars.forEach(cal => {
+    const checked = cal.is_visible != 0 ? 'checked' : '';
+    html += `<div class="sidebar-item flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.04] group">
+      <input type="checkbox" ${checked} class="cal-toggle accent-emerald-500 w-3.5 h-3.5 rounded cursor-pointer" style="accent-color:${cal.color}" data-cal-id="${cal.id}">
+      <span class="text-sm text-white flex-1 truncate cursor-pointer" data-cal-id="${cal.id}">${cal.name}</span>
+      <div class="sidebar-ctx items-center gap-0.5">
+        <button class="cal-edit p-0.5 rounded hover:bg-white/[0.08] text-gray-400 hover:text-white" data-cal-id="${cal.id}"><i data-lucide="pencil" class="w-3 h-3"></i></button>
+        <button class="cal-delete p-0.5 rounded hover:bg-white/[0.08] text-gray-400 hover:text-red-400" data-cal-id="${cal.id}"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+  lucide.createIcons();
+
+  el.querySelectorAll('.cal-toggle').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      const cal = state.calendars.find(c => c.id == cb.dataset.calId);
+      if (cal) {
+        cal.is_visible = cb.checked ? 1 : 0;
+        await api('update_calendar', { id: cal.id, is_visible: cb.checked ? 1 : 0 }, 'POST');
+        const local = getLocalCalendars().map(c => c.id == cal.id ? { ...c, is_visible: cal.is_visible } : c);
+        setLocalCalendars(local);
+        const range = getViewRange();
+        await loadEvents(range.start, range.end);
+      }
+    });
+  });
+  el.querySelectorAll('.cal-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const cal = state.calendars.find(c => c.id == btn.dataset.calId);
+      if (cal && cal.is_default == 1) { showToast('Výchozí kalendář nelze smazat', 'error'); return; }
+      if (cal && confirm(`Smazat kalendář "${cal.name}" a všechny jeho události?`)) {
+        await api('delete_calendar', { id: cal.id }, 'POST');
+        const local = getLocalCalendars().filter(c => c.id != cal.id);
+        setLocalCalendars(local);
+        await loadCalendars();
+        const range = getViewRange(); await loadEvents(range.start, range.end);
+        showToast('Kalendář smazán', 'success');
+      }
+    });
+  });
+  el.querySelectorAll('.cal-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cal = state.calendars.find(c => c.id == btn.dataset.calId);
+      if (cal) openCalendarModal(cal);
+    });
+  });
+}
+
+function renderFolderList() {
+  const el = document.getElementById('folderList');
+  let html = '';
+  state.folders.forEach(f => {
+    const pending = f.pending_count || 0;
+    html += `<div class="sidebar-item flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.04] group cursor-pointer" data-folder-id="${f.id}">
+      <i data-lucide="${f.icon}" class="w-4 h-4" style="color:${f.color}"></i>
+      <span class="text-sm text-white flex-1 truncate">${f.name}</span>
+      ${pending > 0 ? `<span class="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 rounded-full px-1.5 py-0.5">${pending}</span>` : ''}
+      <div class="sidebar-ctx items-center gap-0.5">
+        <button class="folder-delete p-0.5 rounded hover:bg-white/[0.08] text-gray-400 hover:text-red-400" data-folder-id="${f.id}"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+  lucide.createIcons();
+
+  el.querySelectorAll('[data-folder-id]').forEach(item => {
+    if (item.classList.contains('sidebar-item')) {
+      item.addEventListener('click', e => {
+        if (e.target.closest('.folder-delete')) return;
+        openRemindersPanel(parseInt(item.dataset.folderId));
+      });
+    }
+  });
+  el.querySelectorAll('.folder-delete').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const f = state.folders.find(x => x.id == btn.dataset.folderId);
+      if (f && confirm(`Smazat složku "${f.name}" a všechny připomínky?`)) {
+        await api('delete_folder', { id: f.id }, 'POST');
+        const local = getLocalFolders().filter(x => x.id != f.id);
+        setLocalFolders(local);
+        await loadFolders();
+        showToast('Složka smazána', 'success');
+      }
+    });
+  });
+}
+
+// === SEARCH ===
+let searchTimer = null;
+const searchInput = document.getElementById('searchInput');
+const searchDropdown = document.getElementById('searchDropdown');
+let searchIdx = -1;
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    const q = searchInput.value.trim();
+    if (q.length < 2) { searchDropdown.classList.add('hidden'); return; }
+    const results = await api('search', { q });
+    if (!results.length) { searchDropdown.innerHTML = '<div class="p-3 text-sm text-gray-500">Žádné výsledky</div>'; searchDropdown.classList.remove('hidden'); return; }
+    searchIdx = -1;
+    let html = '';
+    results.forEach((r, i) => {
+      const icon = r.type === 'event' ? 'calendar' : 'bell';
+      const date = r.type === 'event' ? fmtDateCz(r.start_date) : (r.due_date ? fmtDateCz(r.due_date) : '');
+      const dot = r.color ? `<div class="w-2 h-2 rounded-full shrink-0" style="background:${r.color}"></div>` : '';
+      html += `<div class="search-result flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors" data-idx="${i}">
+        <i data-lucide="${icon}" class="w-4 h-4 text-gray-500 shrink-0"></i>
+        <div class="flex-1 min-w-0"><div class="text-sm text-white truncate">${r.title}</div><div class="text-[10px] text-gray-500">${date}</div></div>
+        ${dot}
+      </div>`;
+    });
+    searchDropdown.innerHTML = html;
+    searchDropdown.classList.remove('hidden');
+    lucide.createIcons();
+
+    searchDropdown.querySelectorAll('.search-result').forEach(el => {
+      el.addEventListener('click', () => {
+        const r = results[parseInt(el.dataset.idx)];
+        if (r.type === 'event') {
+          const ev = state.events.find(e => e.id == r.id);
+          if (ev) showEventPopover(ev, searchInput);
+        }
+        searchDropdown.classList.add('hidden');
+        searchInput.value = '';
+        searchInput.blur();
+      });
+    });
+  }, 250);
+});
+
+searchInput.addEventListener('keydown', e => {
+  const items = searchDropdown.querySelectorAll('.search-result');
+  if (e.key === 'ArrowDown') { e.preventDefault(); searchIdx = Math.min(searchIdx + 1, items.length - 1); highlightSearchItem(items); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); searchIdx = Math.max(searchIdx - 1, 0); highlightSearchItem(items); }
+  else if (e.key === 'Enter' && searchIdx >= 0 && items[searchIdx]) { items[searchIdx].click(); }
+  else if (e.key === 'Escape') { searchDropdown.classList.add('hidden'); searchInput.blur(); }
+});
+
+function highlightSearchItem(items) {
+  items.forEach((it, i) => { it.style.background = i === searchIdx ? 'var(--elevated)' : ''; });
+  if (items[searchIdx]) items[searchIdx].scrollIntoView({ block: 'nearest' });
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#searchInput') && !e.target.closest('#searchDropdown')) {
+    searchDropdown.classList.add('hidden');
+  }
+});
+
+// === MODALS ===
+function openEventModal(event = null, dateStr = null) {
+  state.editingEventId = event ? event.id : null;
+  const m = document.getElementById('eventModal');
+  const title = document.getElementById('eventTitle');
+  const startDate = document.getElementById('eventStartDate');
+  const startTime = document.getElementById('eventStartTime');
+  const endDate = document.getElementById('eventEndDate');
+  const endTime = document.getElementById('eventEndTime');
+  const allDay = document.getElementById('eventAllDay');
+  const location = document.getElementById('eventLocation');
+  const desc = document.getElementById('eventDescription');
+  const rec = document.getElementById('eventRecurrence');
+  const rem = document.getElementById('eventReminder');
+
+  if (event) {
+    title.value = event.title;
+    startDate.value = event.start_date;
+    startTime.value = event.start_time || '09:00';
+    endDate.value = event.end_date;
+    endTime.value = event.end_time || '10:00';
+    allDay.checked = !!event.is_all_day;
+    location.value = event.location || '';
+    desc.value = event.description || '';
+    rec.value = event.recurrence || 'none';
+    rem.value = event.reminder || '';
+    document.getElementById('eventCalendar').value = event.calendar_id;
+  } else {
+    const ds = dateStr || todayStr();
+    title.value = '';
+    startDate.value = ds;
+    startTime.value = '09:00';
+    endDate.value = ds;
+    endTime.value = '10:00';
+    allDay.checked = false;
+    location.value = '';
+    desc.value = '';
+    rec.value = 'none';
+    rem.value = '';
+    const def = state.calendars.find(c => c.is_default == 1) || state.calendars[0];
+    if (def) document.getElementById('eventCalendar').value = def.id;
+  }
+  toggleTimeInputs();
+  m.classList.remove('hidden');
+  setTimeout(() => title.focus(), 100);
+}
+
+function closeEventModal() {
+  document.getElementById('eventModal').classList.add('hidden');
+  state.editingEventId = null;
+}
+
+function toggleTimeInputs() {
+  const allDay = document.getElementById('eventAllDay').checked;
+  document.querySelectorAll('.event-time-input').forEach(el => {
+    el.style.display = allDay ? 'none' : '';
+  });
+}
+
+document.getElementById('eventAllDay').addEventListener('change', toggleTimeInputs);
+document.getElementById('eventCancel').addEventListener('click', closeEventModal);
+document.getElementById('newEventBtn').addEventListener('click', () => openEventModal());
+
+document.getElementById('eventSave').addEventListener('click', async () => {
+  const data = {
+    title: document.getElementById('eventTitle').value,
+    calendar_id: parseInt(document.getElementById('eventCalendar').value),
+    start_date: document.getElementById('eventStartDate').value,
+    start_time: document.getElementById('eventAllDay').checked ? null : document.getElementById('eventStartTime').value,
+    end_date: document.getElementById('eventEndDate').value,
+    end_time: document.getElementById('eventAllDay').checked ? null : document.getElementById('eventEndTime').value,
+    is_all_day: document.getElementById('eventAllDay').checked ? 1 : 0,
+    location: document.getElementById('eventLocation').value,
+    description: document.getElementById('eventDescription').value,
+    recurrence: document.getElementById('eventRecurrence').value,
+    reminder: document.getElementById('eventReminder').value || null,
+  };
+  if (!data.title) { showToast('Název události je povinný', 'error'); return; }
+
+  let result;
+  if (state.editingEventId) {
+    data.id = state.editingEventId;
+    result = await api('update_event', data, 'POST');
+  } else {
+    result = await api('create_event', data, 'POST');
+  }
+  if (result && !result.error) {
+    closeEventModal();
+    const range = getViewRange(); await loadEvents(range.start, range.end);
+    showToast(state.editingEventId ? 'Událost aktualizována' : 'Událost uložena', 'success');
+  } else {
+    showToast('Nepodařilo se uložit — zkus to znovu', 'error');
+  }
+});
+
+function populateCalendarSelect() {
+  const sel = document.getElementById('eventCalendar');
+  sel.innerHTML = '';
+  state.calendars.forEach(cal => {
+    const opt = document.createElement('option');
+    opt.value = cal.id;
+    opt.textContent = cal.name;
+    sel.appendChild(opt);
+  });
+}
+
+function openCalendarModal(cal = null) {
+  state.editingCalendarId = cal ? cal.id : null;
+  const m = document.getElementById('calendarModal');
+  document.getElementById('calendarModalTitle').textContent = cal ? 'Upravit kalendář' : 'Nový kalendář';
+  document.getElementById('calName').value = cal ? cal.name : '';
+  state.selectedCalColor = cal ? cal.color : '#10b981';
+  renderCalColorPicker();
+  document.getElementById('calSave').textContent = cal ? 'Uložit' : 'Vytvořit';
+  m.classList.remove('hidden');
+}
+
+function renderCalColorPicker() {
+  const el = document.getElementById('calColorPicker');
+  el.innerHTML = CAL_COLORS.map(c =>
+    `<button class="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${c === state.selectedCalColor ? 'border-white scale-110' : 'border-transparent'}" style="background:${c}" data-color="${c}"></button>`
+  ).join('');
+  el.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.selectedCalColor = btn.dataset.color;
+      renderCalColorPicker();
+    });
+  });
+}
+
+document.getElementById('addCalendarBtn').addEventListener('click', () => openCalendarModal());
+document.getElementById('calCancel').addEventListener('click', () => document.getElementById('calendarModal').classList.add('hidden'));
+document.getElementById('calSave').addEventListener('click', async () => {
+  const name = document.getElementById('calName').value.trim();
+  if (!name) { showToast('Název je povinný', 'error'); return; }
+  if (state.editingCalendarId) {
+    await api('update_calendar', { id: state.editingCalendarId, name, color: state.selectedCalColor }, 'POST');
+    const local = getLocalCalendars().map(c => c.id == state.editingCalendarId ? { ...c, name, color: state.selectedCalColor } : c);
+    setLocalCalendars(local);
+  } else {
+    const res = await api('create_calendar', { name, color: state.selectedCalColor }, 'POST');
+    const local = getLocalCalendars();
+    local.push({ id: res?.id || Date.now(), name, color: state.selectedCalColor, is_visible: 1, is_default: 0 });
+    setLocalCalendars(local);
+  }
+  document.getElementById('calendarModal').classList.add('hidden');
+  await loadCalendars();
+  showToast(state.editingCalendarId ? 'Kalendář aktualizován' : 'Kalendář vytvořen', 'success');
+  state.editingCalendarId = null;
+});
+
+// Folder modal
+function openFolderModal() {
+  document.getElementById('folderName').value = '';
+  document.getElementById('folderIcon').value = 'bell';
+  state.selectedFolderColor = '#9ca3af';
+  renderFolderColorPicker();
+  document.getElementById('folderModal').classList.remove('hidden');
+}
+
+function renderFolderColorPicker() {
+  const el = document.getElementById('folderColorPicker');
+  el.innerHTML = FOLDER_COLORS.map(c =>
+    `<button class="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${c === state.selectedFolderColor ? 'border-white scale-110' : 'border-transparent'}" style="background:${c}" data-color="${c}"></button>`
+  ).join('');
+  el.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => { state.selectedFolderColor = btn.dataset.color; renderFolderColorPicker(); });
+  });
+}
+
+document.getElementById('addFolderBtn').addEventListener('click', openFolderModal);
+document.getElementById('folderCancel').addEventListener('click', () => document.getElementById('folderModal').classList.add('hidden'));
+document.getElementById('folderSave').addEventListener('click', async () => {
+  const name = document.getElementById('folderName').value.trim();
+  if (!name) { showToast('Název je povinný', 'error'); return; }
+  const res = await api('create_folder', { name, icon: document.getElementById('folderIcon').value, color: state.selectedFolderColor }, 'POST');
+  const local = getLocalFolders();
+  local.push({ id: res?.id || Date.now(), name, icon: document.getElementById('folderIcon').value, color: state.selectedFolderColor, pending_count: 0 });
+  setLocalFolders(local);
+  document.getElementById('folderModal').classList.add('hidden');
+  await loadFolders();
+  showToast('Složka vytvořena', 'success');
+});
+
+// Reminder modal
+function openReminderModal(folderId = null) {
+  document.getElementById('reminderTitle').value = '';
+  document.getElementById('reminderDueDate').value = '';
+  state.selectedReminderPriority = 'medium';
+  updatePriorityBtns();
+  const sel = document.getElementById('reminderFolder');
+  sel.innerHTML = '';
+  state.folders.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id; opt.textContent = f.name;
+    if (folderId && f.id == folderId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  document.getElementById('reminderModal').classList.remove('hidden');
+}
+
+function updatePriorityBtns() {
+  document.querySelectorAll('.priority-btn').forEach(btn => {
+    const p = btn.dataset.priority;
+    const isActive = p === state.selectedReminderPriority;
+    btn.classList.remove('border-amber-500/50','bg-amber-500/10','text-amber-400','border-red-500/50','bg-red-500/10','text-red-400','border-gray-500/50','bg-gray-500/10','text-gray-400');
+    if (isActive) {
+      if (p === 'low') btn.classList.add('border-gray-500/50','bg-gray-500/10','text-gray-400');
+      else if (p === 'medium') btn.classList.add('border-amber-500/50','bg-amber-500/10','text-amber-400');
+      else btn.classList.add('border-red-500/50','bg-red-500/10','text-red-400');
+    }
+  });
+}
+
+document.querySelectorAll('.priority-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.selectedReminderPriority = btn.dataset.priority;
+    updatePriorityBtns();
+  });
+});
+
+document.getElementById('addReminderBtn').addEventListener('click', () => openReminderModal(state.activeRemFolderId));
+document.getElementById('reminderCancel').addEventListener('click', () => document.getElementById('reminderModal').classList.add('hidden'));
+document.getElementById('reminderSave').addEventListener('click', async () => {
+  const title = document.getElementById('reminderTitle').value.trim();
+  const folderId = parseInt(document.getElementById('reminderFolder').value);
+  if (!title || !folderId) { showToast('Název a složka jsou povinné', 'error'); return; }
+  await api('create_reminder', {
+    title,
+    folder_id: folderId,
+    due_date: document.getElementById('reminderDueDate').value || null,
+    priority: state.selectedReminderPriority,
+  }, 'POST');
+  document.getElementById('reminderModal').classList.add('hidden');
+  await loadReminders(state.activeRemFolderId);
+  await loadFolders();
+  showToast('Připomínka přidána', 'success');
+});
+
+// === EVENT POPOVER ===
+function showEventPopover(ev, anchor) {
+  const pop = document.getElementById('eventPopover');
+  const col = ev.calendar_color || '#10b981';
+  const time = ev.is_all_day ? 'Celý den' : `${fmtTimeCz(ev.start_time)} – ${fmtTimeCz(ev.end_time)}`;
+  const dateStr = fmtDateCz(ev.start_date);
+
+  pop.innerHTML = `
+    <div class="h-1 rounded-t-[10px]" style="background:${col}"></div>
+    <div class="p-3">
+      <div class="text-base font-semibold text-white mb-1">${ev.title}</div>
+      <div class="text-sm text-gray-400 mb-0.5">${dateStr}, ${time}</div>
+      ${ev.location ? `<div class="text-sm text-gray-400 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>${ev.location}</div>` : ''}
+      ${ev.description ? `<div class="text-sm text-gray-300 mt-2">${ev.description}</div>` : ''}
+      <div class="flex items-center gap-2 mt-3 pt-2 border-t border-white/[0.06]">
+        <button class="pop-edit text-sm font-semibold text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-white/[0.06] transition-colors">Upravit</button>
+        <button class="pop-delete text-sm font-semibold text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10 transition-colors">Smazat</button>
+        <button class="pop-close ml-auto p-1 rounded hover:bg-white/[0.06] text-gray-400 hover:text-white transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+    </div>`;
+
+  const rect = anchor.getBoundingClientRect();
+  let left = rect.right + 8;
+  let top = rect.top;
+  if (left + 300 > window.innerWidth) left = rect.left - 308;
+  if (top + 200 > window.innerHeight) top = window.innerHeight - 210;
+  if (left < 8) left = 8;
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+  pop.classList.remove('hidden');
+  lucide.createIcons();
+
+  pop.querySelector('.pop-close').addEventListener('click', () => pop.classList.add('hidden'));
+  pop.querySelector('.pop-edit').addEventListener('click', () => {
+    pop.classList.add('hidden');
+    openEventModal(ev);
+  });
+  pop.querySelector('.pop-delete').addEventListener('click', async () => {
+    if (confirm(`Smazat událost "${ev.title}"?`)) {
+      await api('delete_event', { id: ev.id }, 'POST');
+      pop.classList.add('hidden');
+      const range = getViewRange(); await loadEvents(range.start, range.end);
+      showToast('Událost smazána', 'success');
+    }
+  });
+
+  const outsideClick = e => {
+    if (!pop.contains(e.target) && !pop.contains(e.target)) {
+      pop.classList.add('hidden');
+      document.removeEventListener('click', outsideClick);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', outsideClick), 10);
+}
+
+// === REMINDERS PANEL ===
+function openRemindersPanel(folderId) {
+  state.activeRemFolderId = folderId;
+  state.activeRemFilter = 'all';
+  const panel = document.getElementById('remindersPanel');
+  const folder = state.folders.find(f => f.id == folderId);
+  document.getElementById('remindersTitle').textContent = folder ? folder.name : 'Připomínky';
+  panel.classList.remove('hidden');
+  panel.classList.remove('slide-out');
+  panel.classList.add('slide-in');
+  loadReminders(folderId);
+  updateRemFilterBtns();
+}
+
+function closeRemindersPanel() {
+  const panel = document.getElementById('remindersPanel');
+  panel.classList.remove('slide-in');
+  panel.classList.add('slide-out');
+  setTimeout(() => panel.classList.add('hidden'), 200);
+}
+
+document.getElementById('closeReminders').addEventListener('click', closeRemindersPanel);
+
+function updateRemFilterBtns() {
+  document.querySelectorAll('.rem-filter-btn').forEach(btn => {
+    const isActive = btn.dataset.remFilter === state.activeRemFilter;
+    btn.classList.toggle('border-emerald-500', isActive);
+    btn.classList.toggle('border-transparent', !isActive);
+    btn.classList.toggle('text-white', isActive);
+    btn.classList.toggle('text-gray-400', !isActive);
+  });
+}
+
+document.querySelectorAll('.rem-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.activeRemFilter = btn.dataset.remFilter;
+    updateRemFilterBtns();
+    renderRemindersList();
+  });
+});
+
+function renderRemindersList() {
+  const el = document.getElementById('remindersList');
+  let rems = [...state.reminders];
+  if (state.activeRemFilter === 'active') rems = rems.filter(r => !r.is_done);
+  else if (state.activeRemFilter === 'done') rems = rems.filter(r => r.is_done);
+
+  if (!rems.length) {
+    el.innerHTML = `<div class="flex flex-col items-center justify-center h-64 text-gray-500">
+      <div class="w-16 h-16 rounded-full bg-[#1e1e1e] flex items-center justify-center mb-4"><i data-lucide="check-circle" class="w-8 h-8 text-gray-500"></i></div>
+      <div class="text-sm">Žádné připomínky</div>
+    </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  const prioColors = { low: '#9ca3af', medium: '#f59e0b', high: '#ef4444' };
+  el.innerHTML = rems.map(r => `
+    <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-[#1e1e1e] transition-colors group ${r.is_done ? 'reminder-done' : ''}">
+      <input type="checkbox" class="rem-toggle accent-emerald-500 w-4 h-4 rounded cursor-pointer" data-rem-id="${r.id}" ${r.is_done ? 'checked' : ''}>
+      <div class="flex-1 min-w-0">
+        <div class="rem-text text-sm text-white truncate">${r.title}</div>
+        <div class="text-[10px] text-gray-500 mt-0.5">${r.due_date ? fmtDateCz(r.due_date) : ''}</div>
+      </div>
+      <div class="w-2 h-2 rounded-full shrink-0" style="background:${prioColors[r.priority] || '#9ca3af'}"></div>
+      <button class="rem-delete p-0.5 rounded hover:bg-white/[0.08] text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" data-rem-id="${r.id}"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+    </div>
+  `).join('');
+  lucide.createIcons();
+
+  el.querySelectorAll('.rem-toggle').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      await api('toggle_reminder', { id: cb.dataset.remId }, 'POST');
+      await loadReminders(state.activeRemFolderId);
+      await loadFolders();
+    });
+  });
+  el.querySelectorAll('.rem-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await api('delete_reminder', { id: btn.dataset.remId }, 'POST');
+      await loadReminders(state.activeRemFolderId);
+      await loadFolders();
+      showToast('Připomínka smazána', 'success');
+    });
+  });
+}
+
+// === TOAST ===
+function showToast(message, type = 'info') {
+  const colors = { success: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400', error: 'bg-red-500/10 border-red-500/30 text-red-400', warning: 'bg-amber-500/10 border-amber-500/30 text-amber-400', info: 'bg-blue-500/10 border-blue-500/30 text-blue-400' };
+  const icons = { success: 'check-circle', error: 'x-circle', warning: 'alert-triangle', info: 'info' };
+  const toast = document.createElement('div');
+  toast.className = `toast-enter flex items-center gap-2 px-4 py-2.5 rounded-[10px] border ${colors[type] || colors.info} text-sm font-semibold`;
+  toast.innerHTML = `<i data-lucide="${icons[type] || 'info'}" class="w-4 h-4"></i>${message}`;
+  document.getElementById('toasts').appendChild(toast);
+  lucide.createIcons();
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
+// === NAVIGATION ===
+document.getElementById('todayBtn').addEventListener('click', () => {
+  state.currentDate = new Date();
+  state.miniDate = new Date();
+  refresh();
+});
+
+document.getElementById('prevBtn').addEventListener('click', () => navigate(-1));
+document.getElementById('nextBtn').addEventListener('click', () => navigate(1));
+
+function navigate(dir) {
+  const d = state.currentDate;
+  if (state.activeView === 'month') d.setMonth(d.getMonth() + dir);
+  else if (state.activeView === 'week') d.setDate(d.getDate() + dir * 7);
+  else if (state.activeView === 'day') d.setDate(d.getDate() + dir);
+  else d.setDate(d.getDate() + dir * 7);
+  refresh();
+}
+
+document.querySelectorAll('.segment-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.activeView = btn.dataset.view;
+    refresh();
+  });
+});
+
+document.getElementById('miniPrev').addEventListener('click', () => { state.miniDate.setMonth(state.miniDate.getMonth() - 1); renderMiniMonth(); });
+document.getElementById('miniNext').addEventListener('click', () => { state.miniDate.setMonth(state.miniDate.getMonth() + 1); renderMiniMonth(); });
+
+document.getElementById('sidebarToggle').addEventListener('click', () => {
+  const sb = document.getElementById('sidebar');
+  state.sidebarOpen = !state.sidebarOpen;
+  if (state.sidebarOpen) { sb.classList.remove('hidden'); sb.classList.add('fixed','top-14','left-0','bottom-0','z-20','flex'); }
+  else { sb.classList.add('hidden'); sb.classList.remove('fixed','top-14','left-0','bottom-0','z-20','flex'); }
+});
+
+// === KEYBOARD SHORTCUTS ===
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    if (e.key === 'Escape') { e.target.blur(); closeEventModal(); }
+    return;
+  }
+  if (e.ctrlKey && e.key === 'k') { e.preventDefault(); searchInput.focus(); return; }
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openEventModal(); }
+  else if (e.key === 't' || e.key === 'T') { state.currentDate = new Date(); refresh(); }
+  else if (e.key === 'ArrowLeft') navigate(-1);
+  else if (e.key === 'ArrowRight') navigate(1);
+  else if (e.key === '1') { state.activeView = 'day'; refresh(); }
+  else if (e.key === '2') { state.activeView = 'week'; refresh(); }
+  else if (e.key === '3') { state.activeView = 'month'; refresh(); }
+  else if (e.key === '4') { state.activeView = 'agenda'; refresh(); }
+  else if (e.key === 'Escape') {
+    document.getElementById('eventPopover').classList.add('hidden');
+    closeEventModal();
+    closeRemindersPanel();
+    searchDropdown.classList.add('hidden');
+  }
+});
+
+// === CLOSE MODALS ON OVERLAY CLICK ===
+['eventModal','calendarModal','folderModal','reminderModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+  });
+});
+
+// === REFRESH / INIT ===
+async function refresh() {
+  const range = getViewRange();
+  await loadEvents(range.start, range.end);
+  renderMiniMonth();
+}
+
+async function startApp() {
+  await api('init_defaults', null, 'POST');
+  await loadCalendars();
+  await loadFolders();
+  await refresh();
+}
+
+async function init() {
+  initAuth();
+  initAppsGrid();
+  if (!currentUser) return; // waiting for login — startApp called after poll succeeds
+  await startApp();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
